@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 model User {
@@ -30,7 +30,7 @@ model User {
 model OAuthAccount {
   id         String   @id @default(cuid())
 
-  provider    String
+  provider    OAuthProvider
   providerId  String
 
   userId String
@@ -41,7 +41,10 @@ model OAuthAccount {
   @@unique([provider, providerId])
 }
 
-
+enum OAuthProvider {
+  GOOGLE
+  GITHUB
+}
 
 model RefreshToken {
   id        String   @id @default(cuid())
