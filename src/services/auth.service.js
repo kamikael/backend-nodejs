@@ -3,7 +3,7 @@ import { prisma } from '#lib/prisma';
 import { hash, verify } from '#lib/password';
 import { signAccessToken, signRefreshToken, verifyToken } from '#lib/jwt';
 import { logger } from '#lib/logger';
-
+//uiniufcieufd
 export const signup = async ({ email, password, name }) => {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {

@@ -1,6 +1,6 @@
 import { verifyToken } from '#lib/jwt';
 import { prisma } from '#lib/prisma';
-
+//jdnvfnvidfvi divdifv if,v
 export const isAuthenticated = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
