@@ -2,6 +2,7 @@ import express from "express"
 import cors from "cors"
 import helmet from "helmet"
 import dotenv from "dotenv"
+import { cleanupExpiredTokens } from "./services/cleanup.service.js";
 
 dotenv.config()
 
@@ -17,6 +18,16 @@ app.use(helmet())
 app.use(cors())
 app.use(httpLogger)
 app.use(express.json())
+
+// 🔥 nettoyage au démarrage
+(async () => {
+  try {
+    await cleanupExpiredTokens();
+    console.log("Expired tokens cleaned");
+  } catch (err) {
+    console.error("Cleanup failed", err);
+  }
+})();
 
 //routes
 app.get("/", (res, req)=>{
