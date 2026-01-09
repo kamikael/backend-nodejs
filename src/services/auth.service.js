@@ -1,9 +1,9 @@
 import crypto from 'crypto';
-import { prisma } from '#lib/prisma';
-import { hash, verify } from '#lib/password';
+import prisma  from '#lib/prisma';
+import { hashPassword, verifyPassword } from '#lib/password';
 import { signAccessToken, signRefreshToken, verifyToken } from '#lib/jwt';
 import { logger } from '#lib/logger';
-//uiniufcieufd
+
 export const signup = async ({ email, password, name }) => {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
@@ -58,7 +58,7 @@ export const login = async ({ email, password }) => {
 export const refresh = async (token) => {
     // Check if token exists in DB and is valid
     // verifyToken will throw if signature is invalid or expired
-    const payload = await verifyToken(token);
+    const payload = await verifyToken(token, "refresh");
 
     const savedToken = await prisma.refreshToken.findUnique({
         where: { token },
@@ -113,14 +113,14 @@ export const changePassword = async (userId, { oldPassword, newPassword }) => {
         throw error;
     }
 
-    const isValid = await verify(user.password, oldPassword);
+    const isValid = await verifyPassword(user.password, oldPassword);
     if (!isValid) {
         const error = new Error('Invalid old password');
         error.status = 401;
         throw error;
     }
 
-    const hashedPassword = await hash(newPassword);
+    const hashedPassword = await hashPassword(newPassword);
 
     await prisma.user.update({
         where: { id: userId },

@@ -1,7 +1,7 @@
 import { verifyToken } from '#lib/jwt';
 import { TokenBlacklistService } from "../services/token-blacklist.service.js";
 
-export const requireAuth = async (req, res, next) => {
+export const isAuthenticated = async (req, res, next) => {
 try {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ message: "Unauthorized" });

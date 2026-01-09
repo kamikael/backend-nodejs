@@ -1,15 +1,18 @@
 import { ValidationException } from "#lib/exceptions";
 
 /**
- * Cette fonction vérifie que les données reçues respectent les règles prévues.
- * Si ce n'est pas le cas, elle lève une erreur (Exception) que le serveur catchera.
+ * Middleware Express de validation avec Zod
  */
-export function validateData(schema, data) {
-  const result = schema.safeParse(data);
+export const validate = (schema) => (req, res, next) => {
+  const result = schema.safeParse(req.body);
 
   if (!result.success) {
-    throw new ValidationException(result.error.flatten().fieldErrors);
+    throw new ValidationException(
+      "Validation Failed",
+      result.error.flatten().fieldErrors
+    );
   }
 
-  return result.data;
-}
+  req.body = result.data; // données validées
+  next();
+};
