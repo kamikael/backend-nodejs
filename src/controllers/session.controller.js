@@ -17,3 +17,4 @@ export class SessionController {
     res.status(204).send();
   }
 }
+
