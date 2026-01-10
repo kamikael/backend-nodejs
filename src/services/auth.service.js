@@ -3,8 +3,10 @@ import prisma  from '#lib/prisma';
 import { hashPassword, verifyPassword } from '#lib/password';
 import { signAccessToken, signRefreshToken, verifyToken } from '#lib/jwt';
 import { logger } from '#lib/logger';
+import { sendVerificationEmail } from './email.service.js';
 
-export const signup = async ({ email, password, name }) => {
+
+export const signup = async ({ email, password, firstName, lastName }) => {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
         const error = new Error('Email already exists');
@@ -12,20 +14,23 @@ export const signup = async ({ email, password, name }) => {
         throw error;
     }
 
-    const hashedPassword = await hash(password);
-
+    const hashedPassword = await hashPassword(password);
+    
     const user = await prisma.user.create({
         data: {
             email,
             password: hashedPassword,
-            name,
+            firstName,
+            lastName,
         },
     });
 
-    return { id: user.id, email: user.email, name: user.name };
+       // 🔹 Envoi du mail de vérification
+    await sendVerificationEmail(user.id, user.email);
+    return { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName  };
 };
 
-export const login = async ({ email, password }) => {
+export const login = async ({ email, password }, ipAddress, userAgent) => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !user.password) {
         const error = new Error('Invalid credentials');
@@ -33,7 +38,14 @@ export const login = async ({ email, password }) => {
         throw error;
     }
 
-    const isValid = await verify(user.password, password);
+    // 🔹 Vérification email
+    if (!user.emailVerifiedAt) {
+        const error = new Error('Email non vérifié. Merci de vérifier votre boîte mail.');
+        error.status = 403;
+        throw error;
+    }
+
+    const isValid = await verifyPassword(user.password, password);
     if (!isValid) {
         const error = new Error('Invalid credentials');
         error.status = 401;
@@ -49,6 +61,8 @@ export const login = async ({ email, password }) => {
             token: refreshToken,
             userId: user.id,
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+            userAgent,
+            ipAddress,
         },
     });
 
@@ -92,16 +106,35 @@ export const refresh = async (token) => {
     return { accessToken, refreshToken: newRefreshToken };
 };
 
-export const logout = async (token) => {
-    if (!token) return;
+export const logout = async ({ refreshToken, accessToken }) => {
+  // 🔁 Révoquer la session (refresh token)
+  if (refreshToken) {
     try {
-        await prisma.refreshToken.update({
-            where: { token },
-            data: { revokedAt: new Date() },
-        });
+      await prisma.refreshToken.update({
+        where: { token: refreshToken },
+        data: { revokedAt: new Date() },
+      });
     } catch (err) {
-        // Ignore if token not found or already revoked/etc
+      // Ignore si token introuvable ou déjà révoqué
     }
+  }
+
+  // 🚫 Blacklist access token
+  if (accessToken) {
+    try {
+      const payload = await verifyToken(accessToken);
+
+      await prisma.blacklistedAccessToken.create({
+        data: {
+          token: accessToken,
+          userId: payload.sub,
+          expiresAt: new Date(payload.exp * 1000),
+        },
+      });
+    } catch (err) {
+      // Ignore si token invalide ou déjà blacklisté
+    }
+  }
 };
 
 export const changePassword = async (userId, { oldPassword, newPassword }) => {

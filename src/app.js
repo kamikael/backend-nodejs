@@ -11,6 +11,7 @@ import { errorHandler } from "#middlewares/error-handler";
 import { notFoundHandler } from "#middlewares/not-found";
 import authRoutes from "#routes/auth.routes";
 import emailRoutes from "./routes/email.routes.js";
+import sessionRoutes from "#routes/session.routes";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,6 +42,7 @@ app.get("/", (req, res) => {
 
  app.use('/auth', authRoutes);
  app.use("/email", emailRoutes);
+  app.use("/sessions", sessionRoutes);
 
 // Handlers
 app.use(notFoundHandler);

@@ -1,45 +1,53 @@
+import prisma from '#lib/prisma';
 import { verifyToken } from '#lib/jwt';
-import { TokenBlacklistService } from "../services/token-blacklist.service.js";
+import { TokenBlacklistService } from '../services/token-blacklist.service.js';
 
 export const isAuthenticated = async (req, res, next) => {
-try {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ message: "Unauthorized" });
-
-  const token = authHeader.split(" ")[1];
-
-  if (await TokenBlacklistService.isBlacklisted(token)) {
-    return res.status(401).json({ message: "Token revoked" });
-  }
-
-
-    let payload;
   try {
-          payload = await verifyToken(token);
-        } catch {
-            return res.status(401).json({ ok: false, error: 'Invalid token' });
-        }
+    // 1️⃣ Vérifier la présence du header Authorization
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ ok: false, message: 'Unauthorized' });
+    }
 
-        if (!payload || !payload.sub) {
-            return res.status(401).json({ ok: false, error: 'Invalid token payload' });
-        }
+    const token = authHeader.split(' ')[1];
 
-        const user = await prisma.user.findUnique({
-            where: { id: payload.sub }
-        });
+    // 2️⃣ Vérifier que le token n’est pas blacklisté
+    if (await TokenBlacklistService.isBlacklisted(token)) {
+      return res.status(401).json({ ok: false, message: 'Token revoked' });
+    }
 
-        if (!user) {
-            return res.status(401).json({ ok: false, error: 'User not found' });
-        }
+    // 3️⃣ Vérifier la validité du token JWT
+    let payload;
+    try {
+      payload = await verifyToken(token);
+    } catch (err) {
+      return res.status(401).json({ ok: false, message: 'Invalid token' });
+    }
 
-        // Check if user is disabled
-        if (user.disabledAt) {
-            return res.status(403).json({ ok: false, error: 'Account disabled' });
-        }
-    
-    req.user = payload;
+    if (!payload?.sub) {
+      return res.status(401).json({ ok: false, message: 'Invalid token payload' });
+    }
+
+    // 4️⃣ Vérifier que l’utilisateur existe
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+    });
+
+    if (!user) {
+      return res.status(401).json({ ok: false, message: 'User not found' });
+    }
+
+    // 5️⃣ Vérifier si le compte est désactivé
+    if (user.disabledAt) {
+      return res.status(403).json({ ok: false, message: 'Account disabled' });
+    }
+
+    // 6️⃣ Passer l’utilisateur au controller
+    req.user = { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName };
     next();
   } catch (error) {
+    // 7️⃣ Catch général
     next(error);
   }
 };

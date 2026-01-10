@@ -12,7 +12,7 @@ export class SessionController {
   }
 
   static async revokeAll(req, res) {
-    const refreshToken = req.cookies.refreshToken;
+    const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
     await SessionService.revokeAllExceptCurrent(req.user.id, refreshToken);
     res.status(204).send();
   }

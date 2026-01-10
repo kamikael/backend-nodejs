@@ -1,18 +1,13 @@
 import { Router } from "express";
-import { verifyEmailController, resetPasswordController } from "../controllers/email.controller.js";
-import { verifyEmailSchema, passwordResetSchema } from "../schemas/email.schema.js";
+import { resetPasswordController } from "#controllers/email.controller";
+import { passwordResetSchema } from "#schemas/email.schema";
 import { validate } from "../lib/validate.js"; // wrapper Zod pour express
+import { verifyEmailTokenController } from "#controllers/email.controller";
 
 const router = Router();
 
-/**
- * Route pour vérifier / renvoyer l'email de vérification
- */
-router.post(
-  "/verify-email",
-  validate(verifyEmailSchema), // validation du body { email }
-  verifyEmailController
-);
+router.get("/verify", verifyEmailTokenController);
+
 
 /**
  * Route pour réinitialiser le mot de passe (forgot password)

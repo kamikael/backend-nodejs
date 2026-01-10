@@ -38,7 +38,7 @@ export async function sendVerificationEmail(userId, email) {
   });
 
   // Envoi réel de l'email
-  const url = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+  const url = `${process.env.FRONTEND_URL}/email/verify?token=${token}`;
   await sendEmail({
     to: email,
     subject: "Vérifiez votre email",
@@ -65,7 +65,7 @@ export async function sendPasswordResetEmail(userId, email) {
   });
 
   // Envoi réel de l'email
-  const url = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const url = `${process.env.FRONTEND_URL}/email/reset-password?token=${token}`;
   await sendEmail({
     to: email,
     subject: "Réinitialisez votre mot de passe",

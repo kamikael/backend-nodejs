@@ -4,11 +4,12 @@ import { asyncHandler } from '#lib/async-handler';
 import { isAuthenticated } from '#middlewares/auth.middleware';
 import * as authController from '#controllers/auth.controller';
 import * as schema from '#schemas/auth.schema';
+import { authRateLimiter } from '#middlewares/rate-limit';
 
 const router = Router();
 
 router.post('/signup', validate(schema.signupSchema), asyncHandler(authController.signup));
-router.post('/login', validate(schema.loginSchema), asyncHandler(authController.login));
+router.post('/login', authRateLimiter, validate(schema.loginSchema), asyncHandler(authController.login));
 router.post('/refresh', validate(schema.refreshTokenSchema), asyncHandler(authController.refresh));
 router.post('/logout', asyncHandler(authController.logout));
 
