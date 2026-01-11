@@ -88,8 +88,10 @@ L’API sera disponible sur :
 
 ```json
 {
-  "email": "test@example.com",
-  "password": "password123"
+  "email":"darksideinfinity983@gmail.com",
+  "password": "password123",
+  "firstName": "mbarga",
+  "lastName": "kami"
 }
 ```
 
@@ -101,7 +103,7 @@ L’API sera disponible sur :
 
 ```json
 {
-  "email": "test@example.com",
+  "email":"darksideinfinity983@gmail.com",
   "password": "password123"
 }
 ```
@@ -110,7 +112,18 @@ L’API sera disponible sur :
 
 ```json
 {
-  "accessToken": "<JWT_TOKEN>"
+  "ok": true,
+  "data": {
+    "success": true,
+    "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI4MTc3NWRjMy03NTRhLTRlODItOGMzZi03YzBkZWZmOTUxYjYiLCJ0eXBlIjoiYWNjZXNzIiwianRpIjoiYzg4MWY0YTEtODljNS00ZjFjLWJjMDgtZGFiOTVkODJhNGQ4Iiwicm5kIjoiMGY0ZWJkZWMzZGMyNjM1MTBmODczNTYzOTZmMGVjOWU4NWViMjFkMDY2MTA4YmE3MTBlMTNiYjEwOGRjNjZmMyIsImlhdCI6MTc2ODEzMzgzMSwiZXhwIjoxNzY4MTM0NzMxfQ.cn298Kn37_klKpK5QV1yG8Q9FG4W2mns0vSI-bth9r4",
+    "refreshToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiI4MTc3NWRjMy03NTRhLTRlODItOGMzZi03YzBkZWZmOTUxYjYiLCJ0eXBlIjoicmVmcmVzaCIsImp0aSI6IjhiYzY3MTBmLTM5YTktNDZiMi1iNTIxLWQwNGM3MWQ5Mzk3ZiIsInJuZCI6IjVkZGE2MzA4ZDI4YzM5MWFmNDE3ZDM2MGY4ZTBlNTVmZjhkMTFmMTkwMDQ1MDYxNWY2ZTA5MzAwMDM3OGY4N2UwMzBhOWViZjMwMjZjMDE3ZmViMmNkZTYxY2VlMmI0ZiIsImlhdCI6MTc2ODEzMzgzMSwiZXhwIjoxNzY4NzM4NjMxfQ.qZX32XYUqIqVZvP6O4dpqfHcn-7QdWTDYOfuueWELEc",
+    "user": {
+      "id": "81775dc3-754a-4e82-8c3f-7c0deff951b6",
+      "email": "darksideinfinity983@gmail.com",
+      "firstName": "Jean",
+      "lastName": "Claude"
+    }
+  }
 }
 ```
 
