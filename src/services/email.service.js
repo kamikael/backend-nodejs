@@ -1,15 +1,16 @@
 import nodemailer from "nodemailer";
 import prisma from "../lib/prisma.js";
 import { generateTokenWithExpiry } from "./token.service.js";
+import {env} from '#config/env'
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT),
-  secure: false, // true si port 465
+  host: env.SMTP.HOST,
+  port: env.SMTP.PORT,
+  secure: false,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
+    user: env.SMTP.USER,
+    pass: env.SMTP.PASS,
+  },
 });
 
 
@@ -18,7 +19,7 @@ const transporter = nodemailer.createTransport({
  */
 async function sendEmail({ to, subject, html }) {
   return transporter.sendMail({
-    from: process.env.EMAIL_FROM,
+    from: env.SMTP.FROM,
     to,
     subject,
     html
@@ -38,7 +39,7 @@ export async function sendVerificationEmail(userId, email) {
   });
 
   // Envoi réel de l'email
-  const url = `${process.env.FRONTEND_URL}/email/verify?token=${token}`;
+  const url = `${env.FRONTEND_URL}/email/verify?token=${token}`;
   await sendEmail({
     to: email,
     subject: "Vérifiez votre email",
@@ -65,7 +66,7 @@ export async function sendPasswordResetEmail(userId, email) {
   });
 
   // Envoi réel de l'email
-  const url = `${process.env.FRONTEND_URL}/email/reset-password?token=${token}`;
+  const url = `${env.FRONTEND_URL}/email/reset-password?token=${token}`;
   await sendEmail({
     to: email,
     subject: "Réinitialisez votre mot de passe",

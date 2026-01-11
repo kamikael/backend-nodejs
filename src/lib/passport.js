@@ -1,6 +1,6 @@
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-
+import { env } from "#config/env";
 /**
  * Passport ne fait qu'une chose :
  * - Authentifier Google
@@ -11,9 +11,9 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 passport.use(
   new GoogleStrategy(
     {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "/oauth/google/callback",
+      clientID: env.GOOGLE.CLIENT_ID,
+clientSecret: env.GOOGLE.CLIENT_SECRET,
+callbackURL: env.GOOGLE.CALLBACK_URL,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {

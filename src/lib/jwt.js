@@ -1,22 +1,34 @@
 import { SignJWT, jwtVerify } from "jose";
+import crypto from "crypto";
+import { env } from "#config/env";
 
 const accessSecret = new TextEncoder().encode(
-  process.env.JWT_ACCESS_SECRET
+  env.JWT.ACCESS_SECRET
 );
 
 const refreshSecret = new TextEncoder().encode(
-  process.env.JWT_REFRESH_SECRET
+  env.JWT.REFRESH_SECRET
 );
 
 const alg = "HS256";
 
 /**
- * 🔐 Token temporaire 2FA
+ * 🔐 Génère de l'entropie pour allonger le JWT
+ */
+function generateEntropy(size = 48) {
+  // 48 bytes → 96 caractères hex
+  return crypto.randomBytes(size).toString("hex");
+}
+
+/**
+ * 🔐 Token temporaire 2FA (≥ 250 caractères)
  */
 export async function signTwoFactorToken(userId) {
   return new SignJWT({
     sub: userId,
     type: "2fa",
+    jti: crypto.randomUUID(),
+    rnd: generateEntropy(32),
   })
     .setProtectedHeader({ alg })
     .setIssuedAt()
@@ -25,33 +37,37 @@ export async function signTwoFactorToken(userId) {
 }
 
 /**
- * 🔐 Access Token
+ * 🔐 Access Token (≥ 250 caractères)
  */
 export async function signAccessToken(payload) {
   return new SignJWT({
     ...payload,
     type: "access",
+    jti: crypto.randomUUID(),
+    rnd: generateEntropy(32),
   })
     .setProtectedHeader({ alg })
     .setIssuedAt()
     .setExpirationTime(
-      process.env.JWT_ACCESS_EXPIRES_IN || "15m"
+      env.JWT.ACCESS_EXPIRATION || "15m"
     )
     .sign(accessSecret);
 }
 
 /**
- * 🔁 Refresh Token
+ * 🔁 Refresh Token (≥ 250 caractères)
  */
 export async function signRefreshToken(payload) {
   return new SignJWT({
     ...payload,
     type: "refresh",
+    jti: crypto.randomUUID(),
+    rnd: generateEntropy(48), // encore plus long
   })
     .setProtectedHeader({ alg })
     .setIssuedAt()
     .setExpirationTime(
-      process.env.JWT_REFRESH_EXPIRES_IN || "7d"
+      env.JWT.REFRESH_EXPIRATION || "7d"
     )
     .sign(refreshSecret);
 }

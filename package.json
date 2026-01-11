@@ -5,6 +5,7 @@
   "type": "module",
   "imports": {
     "#lib/*": "./src/lib/*.js",
+    "#config/*": "./src/config/*.js",
     "#controllers/*": "./src/controllers/*.js",
     "#services/*": "./src/services/*.js",
     "#middlewares/*": "./src/middlewares/*.js",
