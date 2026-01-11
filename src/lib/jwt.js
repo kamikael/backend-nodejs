@@ -11,10 +11,27 @@ const refreshSecret = new TextEncoder().encode(
 const alg = "HS256";
 
 /**
- * 🔐 Access Token (courte durée)
+ * 🔐 Token temporaire 2FA
+ */
+export async function signTwoFactorToken(userId) {
+  return new SignJWT({
+    sub: userId,
+    type: "2fa",
+  })
+    .setProtectedHeader({ alg })
+    .setIssuedAt()
+    .setExpirationTime("5m")
+    .sign(accessSecret);
+}
+
+/**
+ * 🔐 Access Token
  */
 export async function signAccessToken(payload) {
-  return new SignJWT(payload)
+  return new SignJWT({
+    ...payload,
+    type: "access",
+  })
     .setProtectedHeader({ alg })
     .setIssuedAt()
     .setExpirationTime(
@@ -24,10 +41,13 @@ export async function signAccessToken(payload) {
 }
 
 /**
- * 🔁 Refresh Token (longue durée)
+ * 🔁 Refresh Token
  */
 export async function signRefreshToken(payload) {
-  return new SignJWT(payload)
+  return new SignJWT({
+    ...payload,
+    type: "refresh",
+  })
     .setProtectedHeader({ alg })
     .setIssuedAt()
     .setExpirationTime(
@@ -37,12 +57,19 @@ export async function signRefreshToken(payload) {
 }
 
 /**
- * ✅ Vérification token (access OU refresh)
+ * ✅ Vérification token typé
  */
-export async function verifyToken(token, type = "access") {
+export async function verifyToken(token, expectedType = "access") {
   const secret =
-    type === "refresh" ? refreshSecret : accessSecret;
+    expectedType === "refresh" ? refreshSecret : accessSecret;
 
   const { payload } = await jwtVerify(token, secret);
+
+  if (payload.type !== expectedType) {
+    const error = new Error("Invalid token type");
+    error.status = 401;
+    throw error;
+  }
+
   return payload;
 }

@@ -1,32 +1,32 @@
-import prisma from '#lib/prisma';
-import { verifyToken } from '#lib/jwt';
-import { TokenBlacklistService } from '../services/token-blacklist.service.js';
+import prisma from "#lib/prisma";
+import { verifyToken } from "#lib/jwt";
+import { TokenBlacklistService } from "../services/token-blacklist.service.js";
 
 export const isAuthenticated = async (req, res, next) => {
   try {
     // 1️⃣ Vérifier la présence du header Authorization
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ ok: false, message: 'Unauthorized' });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const token = authHeader.split(' ')[1];
+    const token = authHeader.split(" ")[1];
 
     // 2️⃣ Vérifier que le token n’est pas blacklisté
     if (await TokenBlacklistService.isBlacklisted(token)) {
-      return res.status(401).json({ ok: false, message: 'Token revoked' });
+      return res.status(401).json({ success: false, message: "Token revoked" });
     }
 
     // 3️⃣ Vérifier la validité du token JWT
     let payload;
     try {
-      payload = await verifyToken(token);
+      payload = await verifyToken(token, "access");
     } catch (err) {
-      return res.status(401).json({ ok: false, message: 'Invalid token' });
+      return res.status(401).json({ success: false, message: "Invalid token" });
     }
 
     if (!payload?.sub) {
-      return res.status(401).json({ ok: false, message: 'Invalid token payload' });
+      return res.status(401).json({ success: false, message: "Invalid token payload" });
     }
 
     // 4️⃣ Vérifier que l’utilisateur existe
@@ -35,19 +35,40 @@ export const isAuthenticated = async (req, res, next) => {
     });
 
     if (!user) {
-      return res.status(401).json({ ok: false, message: 'User not found' });
+      return res.status(401).json({ success: false, message: "User not found" });
     }
 
     // 5️⃣ Vérifier si le compte est désactivé
     if (user.disabledAt) {
-      return res.status(403).json({ ok: false, message: 'Account disabled' });
+      return res.status(403).json({ success: false, message: "Account disabled" });
     }
 
-    // 6️⃣ Passer l’utilisateur au controller
-    req.user = { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName };
+    // 6️⃣ Gérer le flow 2FA
+    // payload.twoFactor = true => token temporaire 2FA
+    if (payload.twoFactor) {
+      // Autoriser uniquement les routes 2FA
+      if (!req.path.startsWith("/2fa")) {
+        return res.status(403).json({
+          success: false,
+          message: "Two-factor authentication required",
+        });
+      }
+    }
+
+    // 7️⃣ Passer l’utilisateur au controller
+    req.user = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      twoFactorEnabledAt: user.twoFactorEnabledAt,
+      twoFactorSecret: user.twoFactorSecret,
+      isTempToken: !!payload.twoFactor, // flag pour savoir si c'est un token temporaire
+    };
+
     next();
   } catch (error) {
-    // 7️⃣ Catch général
+    // 8️⃣ Catch général
     next(error);
   }
 };

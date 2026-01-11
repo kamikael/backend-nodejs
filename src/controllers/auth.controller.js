@@ -13,15 +13,27 @@ export const login = async (req, res, next) => {
   try {
     const data = await authService.login(req.body, ipAddress, userAgent);
 
-    // ✅ Login SUCCESS → historique
-    await prisma.loginHistory.create({
-      data: {
-        userId: data.user.id,
-        ipAddress,
-        userAgent,
-        success: true,
-      },
-    });
+    // 🔹 Login SUCCESS → historique seulement si user identifié (pas 2FA pending)
+    if (data.user?.id) {
+      await prisma.loginHistory.create({
+        data: {
+          userId: data.user.id,
+          ipAddress,
+          userAgent,
+          success: true,
+        },
+      });
+    }
+
+    // 🔹 Réponse adaptée
+    if (data.twoFactorRequired) {
+      return res.status(200).json({
+        ok: true,
+        twoFactorRequired: true,
+        tempToken: data.tempToken,
+        message: 'Two-factor authentication required',
+      });
+    }
 
     return res.status(200).json({
       ok: true,
@@ -35,19 +47,20 @@ export const login = async (req, res, next) => {
           ipAddress,
           userAgent,
           success: false,
+          userId: error.userId || null, // optionnel si on a l'ID
         },
       });
     } catch (_) {
-      // on ne bloque jamais la réponse à cause du logging
+      // ne jamais bloquer la réponse à cause du logging
     }
 
-    // ⛔ laisser l’error handler gérer le statut si présent
     return res.status(error.status || 401).json({
       ok: false,
       message: error.message || 'Invalid credentials',
     });
   }
 };
+
 
 
 export const refresh = async (req, res) => {
@@ -58,12 +71,18 @@ export const refresh = async (req, res) => {
 
 export const logout = async (req, res, next) => {
   try {
-    const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
-    const accessToken = req.headers.authorization?.split(' ')[1];
+    const refreshToken =
+      req.cookies?.refreshToken || req.body.refreshToken;
+
+    const accessToken =
+      req.headers.authorization?.split(" ")[1];
 
     await authService.logout({ refreshToken, accessToken });
 
-    res.status(204).send("logout successful");
+    return res.status(200).json({
+      success: true,
+      message: "Logout successful",
+    });
   } catch (err) {
     next(err);
   }

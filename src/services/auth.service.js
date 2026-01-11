@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import prisma  from '#lib/prisma';
 import { hashPassword, verifyPassword } from '#lib/password';
-import { signAccessToken, signRefreshToken, verifyToken } from '#lib/jwt';
+import { signAccessToken, signRefreshToken, verifyToken, signTwoFactorToken } from '#lib/jwt';
 import { logger } from '#lib/logger';
 import { sendVerificationEmail } from './email.service.js';
 
@@ -31,43 +31,83 @@ export const signup = async ({ email, password, firstName, lastName }) => {
 };
 
 export const login = async ({ email, password }, ipAddress, userAgent) => {
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.password) {
-        const error = new Error('Invalid credentials');
-        error.status = 401;
-        throw error;
-    }
+  // 1️⃣ Récupérer l'utilisateur
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user || !user.password) {
+    const error = new Error('Invalid credentials');
+    error.status = 401;
+    throw error;
+  }
 
-    // 🔹 Vérification email
-    if (!user.emailVerifiedAt) {
-        const error = new Error('Email non vérifié. Merci de vérifier votre boîte mail.');
-        error.status = 403;
-        throw error;
-    }
+  // 2️⃣ Vérification email
+  if (!user.emailVerifiedAt) {
+    const error = new Error('Email non vérifié. Merci de vérifier votre boîte mail.');
+    error.status = 403;
+    throw error;
+  }
 
-    const isValid = await verifyPassword(user.password, password);
-    if (!isValid) {
-        const error = new Error('Invalid credentials');
-        error.status = 401;
-        throw error;
-    }
+  // 3️⃣ Vérification du mot de passe
+  const isValid = await verifyPassword(user.password, password);
+  if (!isValid) {
+    const error = new Error('Invalid credentials');
+    error.status = 401;
+    throw error;
+  }
 
-    const accessToken = await signAccessToken({ sub: user.id });
-    const refreshToken = await signRefreshToken({ sub: user.id });
+  // 4️⃣ Vérification si 2FA activé
+  if (user.twoFactorEnabledAt) {
+    // Ne pas générer les tokens principaux
+    // Juste un token temporaire pour vérifier le code 2FA
+    const tempToken = await signTwoFactorToken(user.id);
 
-    // Store refresh token
-    await prisma.refreshToken.create({
+    // 🔹 Historique login réussi (mais code 2FA requis)
+      await prisma.loginHistory.create({
         data: {
-            token: refreshToken,
-            userId: user.id,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-            userAgent,
-            ipAddress,
+          userId: user.id,
+          ipAddress,
+          userAgent,
+          success: true,
         },
-    });
+      });
 
-    return { accessToken, refreshToken, user: { id: user.id, email: user.email, name: user.name } };
+    return { 
+      success: true,
+      twoFactorRequired: true,
+      tempToken,
+      message: 'Two-factor authentication required'
+    };
+  }
+
+  // 5️⃣ Génération des tokens normaux
+  const accessToken = await signAccessToken({ sub: user.id });
+  const refreshToken = await signRefreshToken({ sub: user.id });
+
+  // 6️⃣ Stockage du refresh token
+  await prisma.refreshToken.create({
+    data: {
+      token: refreshToken,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 jours
+      userAgent,
+      ipAddress,
+    },
+  });
+
+  // 7️⃣ Retour formaté
+  return {
+    success: true,
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName
+    }
+  };
 };
+
+
 
 export const refresh = async (token) => {
     // Check if token exists in DB and is valid
@@ -107,22 +147,31 @@ export const refresh = async (token) => {
 };
 
 export const logout = async ({ refreshToken, accessToken }) => {
-  // 🔁 Révoquer la session (refresh token)
+  // -------------------------------
+  // 1️⃣ Révoquer la session
+  // -------------------------------
   if (refreshToken) {
     try {
       await prisma.refreshToken.update({
         where: { token: refreshToken },
         data: { revokedAt: new Date() },
       });
-    } catch (err) {
-      // Ignore si token introuvable ou déjà révoqué
+    } catch {
+      // token inexistant ou déjà révoqué → OK
     }
   }
 
-  // 🚫 Blacklist access token
+  // -------------------------------
+  // 2️⃣ Blacklist access token NORMAL
+  // -------------------------------
   if (accessToken) {
     try {
       const payload = await verifyToken(accessToken);
+
+      // 🚫 NE PAS blacklist les tokens temporaires 2FA
+      if (payload.twoFactor === true) {
+        return;
+      }
 
       await prisma.blacklistedAccessToken.create({
         data: {
@@ -131,8 +180,8 @@ export const logout = async ({ refreshToken, accessToken }) => {
           expiresAt: new Date(payload.exp * 1000),
         },
       });
-    } catch (err) {
-      // Ignore si token invalide ou déjà blacklisté
+    } catch {
+      // token invalide / expiré → OK
     }
   }
 };
