@@ -39,9 +39,12 @@ export const isAuthenticated = async (req, res, next) => {
     }
 
     // 5️⃣ Vérifier si le compte est désactivé
-    if (user.disabledAt) {
-      return res.status(403).json({ success: false, message: "Account disabled" });
-    }
+    if (user.deletedAt || user.disabledAt) {
+  return res.status(403).json({
+    success: false,
+    message: "Account is disabled",
+  });
+}
 
     // 6️⃣ Gérer le flow 2FA
     // payload.twoFactor = true => token temporaire 2FA

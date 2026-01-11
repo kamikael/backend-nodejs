@@ -16,6 +16,7 @@ import sessionRoutes from "#routes/session.routes";
 import '#lib/passport';
 import oauthRoutes from '#routes/oauth.routes';
 import twoFaRoutes from '#routes/twofa.routes';
+import profileRoutes from '#routes/profile.routes';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,6 +51,7 @@ app.get("/", (req, res) => {
 app.use("/sessions", sessionRoutes);
 app.use('/oauth', oauthRoutes);
 app.use('/2fa', twoFaRoutes);
+app.use('/profile', profileRoutes);
 
 // Handlers
 app.use(notFoundHandler);
